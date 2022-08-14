@@ -1,0 +1,109 @@
+<div class='container'>
+  <div class='row'>
+    <div class='alertMessages'>
+      <div
+        class='alert alert-success'
+        id='successAlert'
+        style='display: none;'
+        role='alert'
+      >
+      </div>
+      <div
+        class='alert alert-danger'
+        id='errorAlert'
+        style='display: none;'
+        role='alert'
+      >
+      </div>
+    </div>
+    <div class='offset-md-2 col-md-8 card shadow p-5'>
+      <form class='d-flex flex-column gap-2'>
+        <legend>Global Settings</legend>
+        <div class='row'>
+          <div class='col-md-4'>
+            <div class='form-group'>
+              <label for='office' class='col-form-label'>Office Id:</label>
+              <input
+                type='number'
+                class='form-control'
+                id='office'
+                value='{{officeId}}'
+                required
+              />
+            </div>
+          </div>
+          <div class='col-md-4'>
+            <div class='form-group'>
+              <label for='province' class='col-form-label'>Province:</label>
+              <input
+                type='number'
+                class='form-control'
+                id='province'
+                value='{{province}}'
+                required
+              />
+            </div>
+          </div>
+          <div class='col-md-4'>
+            <div class='form-group'>
+              <label
+                for='quotaCategory'
+                class='col-form-label'
+              >Category(quota):</label>
+              <input
+                type='number'
+                class='form-control'
+                id='quotaCategory'
+                value='{{quotaCategory}}'
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class='form-group'>
+          <label for='inertiaVersion' class='col-form-label'>Inertia Version:</label>
+          <input
+            type='text'
+            class='form-control'
+            id='inertiaVersion'
+            value='{{inertiaVersion}}'
+            required
+          />
+        </div>
+        <div class='row'>
+          <div class='col-md-6'>
+            <div class='form-group'>
+              <label for='dateAd' class='col-form-label'>Date(AD):</label>
+              <input
+                type='text'
+                class='form-control'
+                id='dateAd'
+                value='{{dateAd}}'
+                required
+              />
+            </div>
+          </div>
+          <div class='col-md-6'>
+            <div class='form-group'>
+              <label for='dateBs' class='col-form-label'>Date(BS):</label>
+              <input
+                type='text'
+                class='form-control'
+                id='dateBs'
+                value='{{dateBs}}'
+                required
+              />
+            </div>
+          </div>
+        </div>
+        <br />
+        <button
+          type='button'
+          class='btn btn-primary btn-md'
+          onclick='updateSettings()'
+        >Update</button>
+      </form>
+    </div>
+  </div>
+</div>

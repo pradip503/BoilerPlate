@@ -1,0 +1,23 @@
+//mysql
+var mysql = require('mysql');
+require('dotenv').config();
+
+//database connection
+var connection = mysql.createConnection({
+  host: process.env.HOST,
+  user: process.env.USER,
+  password: process.env.PASSWORD,
+  database: process.env.DATABASE,
+  dateStrings: true,
+});
+
+connection.connect((error) => {
+  if (error) {
+    console.log(error);
+    console.log('Problem in dabatabase connection.');
+  } else {
+    console.log('Connection established!');
+  }
+});
+
+module.exports = connection;

@@ -1,1 +1,172 @@
-<h1>This is from home.</h1>
+<div class='container'>
+  <h3>OTP Process</h3>
+  <hr />
+  <div class='d-flex flex-column gap-3'>
+    <div class='d-flex gap-5'>
+      <button
+        class='btn btn-primary'
+        onclick='applicantLogin("082202-583736-0004")'
+      >
+        User Login
+      </button>
+      <button
+        class='btn btn-secondary'
+        onclick='checkQuota("082202-583736-0004")'
+      >
+        Check quota
+      </button>
+      <button class='btn btn-warning' onclick='sendOTP("082202-583736-0004")'>
+        Send OTP
+      </button>
+      <div id='otpInput'>
+        <input
+          type='number'
+          maxlength='6'
+          minlength='6'
+          name='otp'
+          id='otp'
+          value=''
+          required
+        />
+        <button class='btn btn-warning' type='button' onclick='updateOtp()'>
+          Update OTP
+        </button>
+      </div>
+    </div>
+    <div class='messageBox sticky-top'>
+      <div class='d-flex flex-column'></div>
+      <div class='d-flex gap-2'>Status: <div id='status'>N/A</div></div>
+      <div class='d-flex gap-2 color-red'>Error:
+        <div id='error'>N/A</div></div>
+      <div class='d-flex gap-2'>Message:
+        <div id='message'>N/A</div></div>
+
+    </div>
+  </div>
+</div>
+
+<div class='container mt-5'>
+  <div class='d-flex justify-content-between'>
+    <h3>User Listing</h3>
+    <div class='d-flex items-end gap-2'>
+      <button class='btn btn-outline-success' onclick='addUser()'>
+        Add User
+      </button>
+      <button class='btn btn-outline-info' onclick='bulkApply()'>
+        Bulk Apply
+      </button>
+    </div>
+  </div>
+  <hr />
+  <div class='d-flex flex-column gap-3'>
+    <table class='table'>
+      <thead>
+        <tr>
+          <th scope='col'>S.N.</th>
+          <th scope='col'>username</th>
+          <th scope='col'>password</th>
+          <th scope='col'>Category</th>
+          <th scope='col'>Actions</th>
+          <th scope='col'>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        {{#each users}}
+          <tr>
+            <th scope='row'>{{@index}}</th>
+            <td>{{userId}}</td>
+            <td>{{password}}</td>
+            <td>{{category}}</td>
+            <td>
+              <button
+                class='btn btn-primary'
+                onclick='applicantLogin("{{userId}}")'
+              >
+                User Login
+              </button>
+              <button class='btn btn-warning' onclick='applyForm("{{userId}}")'>
+                Apply
+              </button>
+            </td>
+            <td>
+              <div id={{userId}}></div>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div
+  class='modal fade'
+  id='addUserModal'
+  tabindex='-1'
+  role='dialog'
+  aria-labelledby='exampleModalLabel'
+  aria-hidden='true'
+>
+  <div class='modal-dialog modal-lg' role='document'>
+    <div class='modal-content'>
+      <div class='modal-header'>
+        <h5 class='modal-title' id='exampleModalLabel'>Add User</h5>
+        <button
+          type='button'
+          class='close'
+          data-dismiss='modal'
+          aria-label='Close'
+          onclick='closeUserAddModal()'
+        >
+          <span aria-hidden='true'>&times;</span>
+        </button>
+      </div>
+      <div class='modal-body'>
+        <form class='d-flex flex-column gap-2'>
+          <div class='form-group'>
+            <label for='username' class='col-form-label'>Username:</label>
+            <input
+              type='text'
+              class='form-control'
+              id='username'
+              value=''
+              required
+            />
+          </div>
+          <div class='form-group'>
+            <label for='password' class='col-form-label'>Password:</label>
+            <input
+              type='text'
+              class='form-control'
+              id='password'
+              value=''
+              required
+            />
+          </div>
+          <div class='form-group'>
+            <label for='category'>Select Category:</label>
+            <select class='form-control' id='category' required>
+              <option value='1'>Scooty</option>
+              <option value='2' selected>Bike</option>
+              <option value='3'>Car</option>
+            </select>
+          </div>
+
+        </form>
+      </div>
+      <div class='modal-footer'>
+        <button
+          type='button'
+          class='btn btn-secondary'
+          data-dismiss='modal'
+          onclick='closeUserAddModal()'
+        >Close</button>
+        <button
+          type='button'
+          class='btn btn-primary'
+          onclick='createNewUser()'
+        >Create</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,8 +1,28 @@
 body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 a {
-  color: #00B7FF;
+  color: #00b7ff;
+}
+
+.otp-process {
+  background-color: aliceblue;
+}
+
+.messageBox {
+  border: 3px dashed gray;
+  min-height: 100px;
+  padding: 20px 30px;
+  font-size: 20px;
+}
+.customNav {
+  background-color: #e3e3e3;
+  min-height: 50px;
+}
+#navList > li,
+#navList > li > a {
+  list-style-type: none;
+  text-decoration: none;
+  font-size: 20px;
 }
