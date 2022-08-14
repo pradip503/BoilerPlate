@@ -88,9 +88,9 @@ router.get('/sendOTP/:userId', async (req, res, next) => {
 });
 
 router.post('/updateOtp', async (req, res, next) => {
-  const otpCode = req.body ? req.body.otp : null;
+  const { otp: otpCode, userId } = req.body;
   if (otpCode) {
-    const updateOtpRes = await updateOtpCode(otpCode);
+    const updateOtpRes = await updateOtpCode(userId, otpCode);
     res.json({
       status: 201,
       isError: false,
@@ -117,6 +117,7 @@ router.post('/createUser', (req, res, next) => {
         message: error.message ? error.message : 'Not created!',
       });
     } else {
+      // TODO: If verification user then create otp-verification records
       res.json({
         status: 201,
         isError: false,
@@ -169,6 +170,12 @@ router.post('/applyForm/:userId', async (req, res, next) => {
     });
   } catch (error) {
     console.log(error);
+    res.json({
+      status,
+      isError: false,
+      message: error.message || 'Maybe no active tokens!',
+      userId,
+    });
   }
 });
 
@@ -334,10 +341,15 @@ async function checkAvailableQuota(userId) {
 async function sendOTP(userId) {
   let sUserId = userId;
   try {
-    const { inertiaVersion } = await getDynamicInfo();
+    const {
+      quotaCategory,
+      inertiaVersion,
+      province,
+      officeId,
+      dateAd,
+      dateBs,
+    } = await getDynamicInfo();
     const headers = await getHeaders(userId, inertiaVersion);
-    const { quotaCategory, province, officeId, dateAd, dateBs } =
-      await getDynamicInfo();
     const payload = {
       category_id: quotaCategory,
       province_id: province,
@@ -370,7 +382,8 @@ async function sendOTP(userId) {
         sendOTP(userId);
       }
       const updatedRes =
-        verification && (await updateTokenVerificationCode(verification));
+        verification &&
+        (await updateTokenVerificationCode(userId, verification));
       return {
         status,
         isError: false,
@@ -404,16 +417,21 @@ async function sendOTP(userId) {
   }
 }
 
-async function updateTokenVerificationCode(verificationCode) {
+async function updateTokenVerificationCode(userId, verificationCode) {
   return new Promise((resolve, reject) => {
-    let updateTV = 'UPDATE `otp-verification` SET verificationToken=?';
-    db.query(updateTV, [verificationCode], (error, results) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(true);
-      }
-    });
+    let updateTV =
+      'UPDATE `otp-verification` SET verificationToken =?, usedCount=?, status=? WHERE userId=?';
+    db.query(
+      updateTV,
+      [verificationCode, 0, 'active', userId],
+      (error, results) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(true);
+        }
+      },
+    );
   });
 }
 
@@ -422,10 +440,10 @@ async function updateTokenVerificationCode(verificationCode) {
  * @returns
  */
 
-async function updateOtpCode(otpCode) {
+async function updateOtpCode(userId, otpCode) {
   return new Promise((resolve, reject) => {
-    let updateOTP = 'UPDATE `otp-verification` SET otp=?';
-    db.query(updateOTP, [otpCode], (error, results) => {
+    let updateOTP = 'UPDATE `otp-verification` SET otp=? WHERE userId=?';
+    db.query(updateOTP, [otpCode, userId], (error, results) => {
       if (error) {
         reject(error);
       } else {
@@ -520,12 +538,18 @@ async function getCategory(userId) {
 }
 
 async function getOtpAndToken() {
-  let getTokenInfo = 'SELECT otp, verificationToken from `otp-verification`';
+  let getTokenInfo =
+    'SELECT otp, verificationToken from `otp-verification` where status=?';
   return new Promise((resolve, reject) => {
-    db.query(getTokenInfo, (error, results) => {
+    db.query(getTokenInfo, ['active'], (error, results) => {
       if (error) reject(error);
-      const { otp, verificationToken } = results[0];
-      resolve({ otp, verificationToken });
+      else {
+        if (results.length < 1) {
+          reject('No active verification token!');
+        }
+        const { otp, verificationToken } = results[0];
+        resolve({ otp, verificationToken });
+      }
     });
   });
 }
@@ -550,6 +574,10 @@ async function makeFinalRequest(headers, payload) {
       const successAlerts =
         data && data.props && data.props.alerts && data.props.alerts.length > 0;
 
+      if (successAlerts) {
+        updateOtpExpiry(payload.otp);
+      }
+
       return {
         status,
         isError: false,
@@ -559,6 +587,8 @@ async function makeFinalRequest(headers, payload) {
       };
     } else if (status === 200 && errorMessage) {
       console.log('sucess with errors!', data.props.errors);
+      const { verificationToken, otp } = await getOtpAndToken();
+
       return {
         status,
         isError: true,
@@ -598,7 +628,7 @@ async function udpateSetting({
   dateBs,
 }) {
   let udpateSetting =
-    'Update `otp-verification` SET officeId=?, province=?, quotaCategory=?, inertiaVersion=?, dateAd=?, dateBs=?';
+    'Update `dynamic-info` SET officeId=?, province=?, quotaCategory=?, inertiaVersion=?, dateAd=?, dateBs=?';
   return new Promise((resolve, reject) => {
     db.query(
       udpateSetting,
@@ -613,7 +643,7 @@ async function udpateSetting({
 
 async function getDynamicInfo() {
   let getDynamicInfo =
-    'SELECT officeId, province, inertiaVersion, quotaCategory, dateAd, dateBs from `otp-verification`';
+    'SELECT officeId, province, inertiaVersion, quotaCategory, dateAd, dateBs from `dynamic-info`';
   return new Promise((resolve, reject) => {
     db.query(getDynamicInfo, (error, results) => {
       if (error) reject(error);
@@ -662,6 +692,10 @@ async function bulkApplyProcess(userId) {
     };
   } catch (error) {
     console.log(error);
+    res.json({
+      status: 400,
+      isError: true,
+    });
   }
 }
 
@@ -669,6 +703,40 @@ async function getAllUsersId() {
   let getUsers = 'SELECT userId from `user-session` WHERE userType = ?';
   return new Promise((resolve, reject) => {
     db.query(getUsers, ['normal'], (error, results) => {
+      if (error) reject(error);
+      resolve(results);
+    });
+  });
+}
+
+async function updateOtpExpiry(otpCode) {
+  try {
+    let getVerificationCodeStatus =
+      'SELECT usedCount, status FROM `otp-verification` WHERE otp=?';
+    let udpateOtpStatus;
+    let updateStatusArgs;
+    const vstatus = await runSqlQuery(getVerificationCodeStatus, [otpCode]);
+    const { usedCount, status } = vstatus[0];
+    const newCount = usedCount + 1;
+    if (newCount >= 3) {
+      udpateOtpStatus =
+        'UPDATE `otp-verification` SET usedCount=?, status=? WHERE otp=?';
+      updateStatusArgs = [newCount, 'expired', otpCode];
+    } else {
+      udpateOtpStatus =
+        'UPDATE `otp-verification` SET usedCount=?, status=? WHERE otp=?';
+      updateStatusArgs = [newCount, 'active', otpCode];
+    }
+    await runSqlQuery(udpateOtpStatus, updateStatusArgs);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+// Helper method to run sql query as promise
+async function runSqlQuery(query, args) {
+  return new Promise((resolve, reject) => {
+    db.query(query, args, (error, results) => {
       if (error) reject(error);
       resolve(results);
     });

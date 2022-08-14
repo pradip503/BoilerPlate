@@ -34,16 +34,18 @@ async function sendOTP(userId) {
   }
 }
 
-async function updateOtp() {
+async function updateOtp(userId) {
   try {
     const otp = $('#otp').val();
     if (!otp) {
       alert('Please provide valid otp!');
       return;
     }
-
     setLoadingMessage();
-    const { data, status } = await axios.post('/users/updateOtp', { otp });
+    const { data, status } = await axios.post('/users/updateOtp', {
+      otp,
+      userId,
+    });
     setSuccessMessage(data);
   } catch (error) {
     console.log(error);

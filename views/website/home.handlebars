@@ -2,37 +2,70 @@
   <h3>OTP Process</h3>
   <hr />
   <div class='d-flex flex-column gap-3'>
-    <div class='d-flex gap-5'>
-      <button
-        class='btn btn-primary'
-        onclick='applicantLogin("082202-583736-0004")'
-      >
-        User Login
-      </button>
-      <button
-        class='btn btn-secondary'
-        onclick='checkQuota("082202-583736-0004")'
-      >
-        Check quota
-      </button>
-      <button class='btn btn-warning' onclick='sendOTP("082202-583736-0004")'>
-        Send OTP
-      </button>
-      <div id='otpInput'>
-        <input
-          type='number'
-          maxlength='6'
-          minlength='6'
-          name='otp'
-          id='otp'
-          value=''
-          required
-        />
-        <button class='btn btn-warning' type='button' onclick='updateOtp()'>
-          Update OTP
-        </button>
-      </div>
-    </div>
+
+    <table class='table'>
+      <thead>
+        <tr>
+          <th scope='col'>S.N.</th>
+          <th scope='col'>username</th>
+          <th scope='col'>password</th>
+          <th scope='col'>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        {{#each otpUsers}}
+          <tr>
+            <td scope='row'>{{@index}}</td>
+            <td>{{userId}}</td>
+            <td>{{password}}</td>
+            <td>
+              <div class='d-flex gap-3 mb-2'>
+                <button
+                  class='btn btn-sm btn-primary'
+                  onclick='applicantLogin("{{userId}}")'
+                >
+                  User Login
+                </button>
+                <button
+                  class='btn btn-sm btn-secondary'
+                  onclick='checkQuota("{{userId}}")'
+                >
+                  Check quota
+                </button>
+                <button
+                  class='btn btn-sm btn-warning'
+                  onclick='sendOTP("{{userId}}")'
+                >
+                  Send OTP
+                </button>
+              </div>
+              <div class='d-flex gap-2'>
+                <div id='otpInput'>
+                  <input
+                    type='number'
+                    maxlength='6'
+                    minlength='6'
+                    name='otp'
+                    id='otp'
+                    value=''
+                    required
+                  />
+                </div>
+                <button
+                  class='btn btn-sm btn-warning'
+                  type='button'
+                  onclick='updateOtp("{{userId}}")'
+                >
+                  Update OTP
+                </button>
+              </div>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
     <div class='messageBox sticky-top'>
       <div class='d-flex flex-column'></div>
       <div class='d-flex gap-2'>Status: <div id='status'>N/A</div></div>
