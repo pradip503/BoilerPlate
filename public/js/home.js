@@ -1,5 +1,16 @@
 async function applicantLogin(userId) {
   try {
+    $(`#${userId}`).text('Loading.....');
+    const { data, status } = await axios.get(`/users/${userId}`);
+    $(`#${data.userId}`).text(data.message);
+  } catch (error) {
+    console.log(error);
+    setErrorMessage(error);
+  }
+}
+
+async function verificationUserLogin(userId) {
+  try {
     console.log('user id', userId);
     setLoadingMessage();
     const { data, status } = await axios.get(`/users/${userId}`);
@@ -36,7 +47,7 @@ async function sendOTP(userId) {
 
 async function updateOtp(userId) {
   try {
-    const otp = $('#otp').val();
+    const otp = $(`#${userId}`).val();
     if (!otp) {
       alert('Please provide valid otp!');
       return;
@@ -127,15 +138,30 @@ async function updateSettings() {
   }
 }
 
-async function bulkApply() {
+function bulkApply() {
   try {
-    console.log('object');
-    setLoadingMessage();
-    const { data, status } = await axios.post('/users/bulkApply');
-    setSuccessMessage(data);
+    let applyButtons = $('.applyButton') || [];
+    for (let i = 0; i < applyButtons.length; i++) {
+      applyButtons[i].click();
+    }
+    // console.log('object');
+    // setLoadingMessage();
+    // const { data, status } = await axios.post('/users/bulkApply');
+    // setSuccessMessage(data);
   } catch (error) {
     console.log(error);
-    setErrorMessage(error);
+    // setErrorMessage(error);
+  }
+}
+
+function bulkLogin() {
+  try {
+    let applyButtons = $('.loginButton') || [];
+    for (let i = 0; i < applyButtons.length; i++) {
+      applyButtons[i].click();
+    }
+  } catch (error) {
+    console.log(error);
   }
 }
 

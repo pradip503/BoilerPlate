@@ -22,8 +22,8 @@
             <td>
               <div class='d-flex gap-3 mb-2'>
                 <button
-                  class='btn btn-sm btn-primary'
-                  onclick='applicantLogin("{{userId}}")'
+                  class='btn btn-sm btn-primary verificationUserLogin'
+                  onclick='verificationUserLogin("{{userId}}")'
                 >
                   User Login
                 </button>
@@ -47,7 +47,7 @@
                     maxlength='6'
                     minlength='6'
                     name='otp'
-                    id='otp'
+                    id='{{userId}}'
                     value=''
                     required
                   />
@@ -85,6 +85,9 @@
       <button class='btn btn-outline-success' onclick='addUser()'>
         Add User
       </button>
+      <button class='btn btn-outline-primary' onclick='bulkLogin()'>
+        Bulk Login
+      </button>
       <button class='btn btn-outline-info' onclick='bulkApply()'>
         Bulk Apply
       </button>
@@ -113,12 +116,15 @@
             <td>{{category}}</td>
             <td>
               <button
-                class='btn btn-primary'
+                class='btn btn-primary loginButton'
                 onclick='applicantLogin("{{userId}}")'
               >
                 User Login
               </button>
-              <button class='btn btn-warning' onclick='applyForm("{{userId}}")'>
+              <button
+                class='btn btn-warning applyButton'
+                onclick='applyForm("{{userId}}")'
+              >
                 Apply
               </button>
             </td>

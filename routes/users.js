@@ -17,6 +17,7 @@ router.get('/:userId', async (req, res, next) => {
     const unauthenticatedSystem = await getUnauthSession(userId);
     res.json({
       ...unauthenticatedSystem,
+      userId,
     });
   } catch (error) {
     console.log(error);
@@ -29,11 +30,10 @@ router.get('/:userId', async (req, res, next) => {
 
 router.post('/bulkApply', (req, res, next) => {
   try {
-    console.log('hererareasfsda');
     bulkApply();
     res.json({
       isError: false,
-      message: 'Process started...!',
+      message: 'Process started please view logs for more info...!',
     });
   } catch (error) {
     res.json({
@@ -149,6 +149,10 @@ router.post('/applyForm/:userId', async (req, res, next) => {
       await getDynamicInfo();
     const headers = await getHeaders(userId, inertiaVersion);
     const { verificationToken, otp } = await getOtpAndToken();
+
+    // Update token booking
+    await updateOtpExpiry(otp);
+
     const payload = {
       category_id: category,
       province_id: province,
@@ -169,11 +173,9 @@ router.post('/applyForm/:userId', async (req, res, next) => {
       userId,
     });
   } catch (error) {
-    console.log(error);
     res.json({
-      status,
       isError: false,
-      message: error.message || 'Maybe no active tokens!',
+      message: error || 'Maybe no active tokens!',
       userId,
     });
   }
@@ -268,13 +270,6 @@ async function loginApplicant(userId, loginHeaders) {
       loginApplicant();
     }
   }
-
-  // if (getSession && getSession.status === 200) {
-  //   const { headers } = getSession;
-  //   const { odlSession, xsrfToken } = extractSessionValues(
-  //     headers['set-cookie'],
-  //   );
-  // }
 }
 
 /**
@@ -306,7 +301,9 @@ async function checkAvailableQuota(userId) {
         return {
           statusCode: status,
           isError: false,
-          message: `${data.quotas[lastInfo].available}` || 'N/A',
+          message:
+            `Available: ${data.quotas[lastInfo].available} |  Reserved: ${data.quotas[lastInfo].reserved} | Booked: ${data.quotas[lastInfo].booked}` ||
+            'N/A',
         };
       } else {
         return {
@@ -320,6 +317,7 @@ async function checkAvailableQuota(userId) {
       checkAvailableQuota(sUserId);
     }
   } catch (error) {
+    console.log(error);
     const status = error && error.response ? error.response.status : null;
     if (status && status === 401) {
       return {
@@ -378,7 +376,10 @@ async function sendOTP(userId) {
     if (status === 200 && !errorMessage) {
       const { verification } = data.props;
       if (!verification) {
-        console.log('Unable to get verification token, retrying....!');
+        console.log(
+          'Unable to get verification token, retrying....!',
+          data.props.alerts,
+        );
         sendOTP(userId);
       }
       const updatedRes =
@@ -546,9 +547,10 @@ async function getOtpAndToken() {
       else {
         if (results.length < 1) {
           reject('No active verification token!');
+        } else {
+          const { otp, verificationToken } = results[0];
+          resolve({ otp, verificationToken });
         }
-        const { otp, verificationToken } = results[0];
-        resolve({ otp, verificationToken });
       }
     });
   });
@@ -569,13 +571,17 @@ async function makeFinalRequest(headers, payload) {
       data.props &&
       data.props.errors &&
       Object.keys(data.props.errors).length > 0;
+
     if (status === 200 && !errorMessage) {
       // Check for successfull alerts
       const successAlerts =
         data && data.props && data.props.alerts && data.props.alerts.length > 0;
 
       if (successAlerts) {
-        updateOtpExpiry(payload.otp);
+        // TODO increase successfull form counts
+        console.log('Success alerts aru pani huna sakxa case', data);
+      } else {
+        revertOtpExpiry(payload.otp);
       }
 
       return {
@@ -587,8 +593,7 @@ async function makeFinalRequest(headers, payload) {
       };
     } else if (status === 200 && errorMessage) {
       console.log('sucess with errors!', data.props.errors);
-      const { verificationToken, otp } = await getOtpAndToken();
-
+      await revertOtpExpiry(payload.otp);
       return {
         status,
         isError: true,
@@ -596,7 +601,7 @@ async function makeFinalRequest(headers, payload) {
       };
     } else {
       console.log('uncovered case in apply success', status, errorMessage);
-      console.log('uncovered case', data, status);
+      await revertOtpExpiry(payload.otp);
       return {
         status,
         isError: true,
@@ -604,6 +609,7 @@ async function makeFinalRequest(headers, payload) {
       };
     }
   } catch (error) {
+    revertOtpExpiry(payload.otp);
     const { data, status } = error.response;
     console.log('Apply  error', status);
     if ([401, 409].includes(status)) {
@@ -652,52 +658,52 @@ async function getDynamicInfo() {
   });
 }
 
-async function bulkApply() {
-  try {
-    const users = await getAllUsersId();
-    const unresolvedProcess = users.map((user) => {
-      return bulkApplyProcess(user.userId);
-    });
-    await Promise.all(unresolvedProcess);
-    return 'Process started!';
-  } catch (error) {
-    console.log(error);
-  }
-}
-async function bulkApplyProcess(userId) {
-  try {
-    const { category } = await getCategory(userId);
-    const { inertiaVersion, province, officeId, dateAd, dateBs } =
-      await getDynamicInfo();
-    const headers = await getHeaders(userId, inertiaVersion);
-    const { verificationToken, otp } = await getOtpAndToken();
-    const payload = {
-      category_id: category,
-      province_id: province,
-      office_id: officeId,
-      visit_date_bs: dateBs,
-      visit_date_ad: dateAd,
-      is_urgent: false,
-      urgency_reason_id: '',
-      documents: {},
-      disclaimer: true,
-      otp: otp,
-      verification: verificationToken,
-    };
+// async function bulkApply() {
+//   try {
+//     const users = await getAllUsersId();
+//     const unresolvedProcess = users.map((user) => {
+//       return bulkApplyProcess(user.userId);
+//     });
+//     await Promise.all(unresolvedProcess);
+//     return 'Process started!';
+//   } catch (error) {
+//     console.log(error);
+//   }
+// }
+// async function bulkApplyProcess(userId) {
+//   try {
+//     const { category } = await getCategory(userId);
+//     const { inertiaVersion, province, officeId, dateAd, dateBs } =
+//       await getDynamicInfo();
+//     const headers = await getHeaders(userId, inertiaVersion);
+//     const { verificationToken, otp } = await getOtpAndToken();
+//     const payload = {
+//       category_id: category,
+//       province_id: province,
+//       office_id: officeId,
+//       visit_date_bs: dateBs,
+//       visit_date_ad: dateAd,
+//       is_urgent: false,
+//       urgency_reason_id: '',
+//       documents: {},
+//       disclaimer: true,
+//       otp: otp,
+//       verification: verificationToken,
+//     };
 
-    const submissionRes = await makeFinalRequest(headers, payload);
-    return {
-      ...submissionRes,
-      userId,
-    };
-  } catch (error) {
-    console.log(error);
-    res.json({
-      status: 400,
-      isError: true,
-    });
-  }
-}
+//     const submissionRes = await makeFinalRequest(headers, payload);
+//     return {
+//       ...submissionRes,
+//       userId,
+//     };
+//   } catch (error) {
+//     console.log(error);
+//     res.json({
+//       status: 400,
+//       isError: true,
+//     });
+//   }
+// }
 
 async function getAllUsersId() {
   let getUsers = 'SELECT userId from `user-session` WHERE userType = ?';
@@ -728,6 +734,17 @@ async function updateOtpExpiry(otpCode) {
       updateStatusArgs = [newCount, 'active', otpCode];
     }
     await runSqlQuery(udpateOtpStatus, updateStatusArgs);
+    return true;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function revertOtpExpiry(otp) {
+  try {
+    let reverseExpiry =
+      'UPDATE `otp-verification` SET usedCount=usedCount - 1, status=? WHERE otp=?';
+    await runSqlQuery(reverseExpiry, ['active', otp]);
   } catch (error) {
     console.log(error);
   }
