@@ -55,7 +55,7 @@ if (cluster.isMaster) {
   app.engine(
     'handlebars',
     exphs({
-      defaultLayout: '',
+      defaultLayout: 'index',
       helpers: {},
     }),
   );

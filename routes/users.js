@@ -28,6 +28,30 @@ router.get('/:userId', async (req, res, next) => {
   }
 });
 
+router.get('/applicationStatusCheck/:userId', async (req, res, next) => {
+  try {
+    const userId = req.params && req.params.userId;
+    if (!userId) {
+      res.json({
+        status: 400,
+        isError: true,
+        message: 'Provide user id!',
+      });
+    }
+    const unauthenticatedSystem = await checkApplicationStatus(userId);
+    res.json({
+      ...unauthenticatedSystem,
+      userId,
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({
+      error,
+    });
+    // return Error(error.message || 'Problem in getting the session values!');
+  }
+});
+
 router.post('/bulkApply', (req, res, next) => {
   try {
     bulkApply();
@@ -106,25 +130,29 @@ router.post('/updateOtp', async (req, res, next) => {
 });
 
 router.post('/createUser', (req, res, next) => {
-  const { username, password, category } = req.body;
+  const { username, password, category, province, office } = req.body;
   let createUser =
-    'INSERT INTO `user-session`(userId, password, category) VALUES(?,?,?)';
-  db.query(createUser, [username, password, category], (error, results) => {
-    if (error) {
-      res.json({
-        status: 400,
-        isError: true,
-        message: error.message ? error.message : 'Not created!',
-      });
-    } else {
-      // TODO: If verification user then create otp-verification records
-      res.json({
-        status: 201,
-        isError: false,
-        message: 'User created!',
-      });
-    }
-  });
+    'INSERT INTO `user-session`(userId, password, category, province, office) VALUES(?,?,?,?,?)';
+  db.query(
+    createUser,
+    [username, password, category, province, office],
+    (error, results) => {
+      if (error) {
+        res.json({
+          status: 400,
+          isError: true,
+          message: error.message ? error.message : 'Not created!',
+        });
+      } else {
+        // TODO: If verification user then create otp-verification records
+        res.json({
+          status: 201,
+          isError: false,
+          message: 'User created!',
+        });
+      }
+    },
+  );
 });
 
 router.post('/applyForm/:userId', async (req, res, next) => {
@@ -144,9 +172,8 @@ router.post('/applyForm/:userId', async (req, res, next) => {
    * TODO: Make request
    */
   try {
-    const { category } = await getCategory(userId);
-    const { inertiaVersion, province, officeId, dateAd, dateBs } =
-      await getDynamicInfo();
+    const { category, province, office: officeId } = await getCategory(userId);
+    const { inertiaVersion, dateAd, dateBs } = await getDynamicInfo();
     const headers = await getHeaders(userId, inertiaVersion);
     const { verificationToken, otp } = await getOtpAndToken();
 
@@ -168,6 +195,59 @@ router.post('/applyForm/:userId', async (req, res, next) => {
     };
 
     const submissionRes = await makeFinalRequest(headers, payload);
+    res.json({
+      ...submissionRes,
+      userId,
+    });
+  } catch (error) {
+    res.json({
+      isError: false,
+      message: error || 'Maybe no active tokens!',
+      userId,
+    });
+  }
+});
+
+router.post('/applyAddCatForm/:userId', async (req, res, next) => {
+  const userId = req.params && req.params.userId;
+  if (!userId) {
+    res.json({
+      status: 400,
+      isError: true,
+      message: 'Provide user id!',
+    });
+  }
+  /**
+   * TODO: Get category
+   * TODO: Form headers
+   * TODO: Get otp and verification token
+   * TODO: Form payload
+   * TODO: Make request
+   */
+  try {
+    const { category, province, office: officeId } = await getCategory(userId);
+    const { inertiaVersion, dateAd, dateBs } = await getDynamicInfo();
+    const headers = await getHeaders(userId, inertiaVersion);
+    const { verificationToken, otp } = await getOtpAndToken();
+
+    // Update token booking
+    await updateOtpExpiry(otp);
+
+    const payload = {
+      category_id: category,
+      province_id: province,
+      office_id: officeId,
+      visit_date_bs: dateBs,
+      visit_date_ad: dateAd,
+      is_urgent: false,
+      urgency_reason_id: '',
+      documents: {},
+      disclaimer: true,
+      otp: otp,
+      verification: verificationToken,
+    };
+
+    const submissionRes = await makeAddCatFinalRequest(headers, payload);
     res.json({
       ...submissionRes,
       userId,
@@ -297,7 +377,6 @@ async function checkAvailableQuota(userId) {
       if (data && data.quotas) {
         const len = Object.keys(data.quotas).length;
         const lastInfo = Object.keys(data.quotas)[len - 1];
-        console.log('Quota details: ', data.quotas[lastInfo]);
         return {
           statusCode: status,
           isError: false,
@@ -361,7 +440,6 @@ async function sendOTP(userId) {
       otp: null,
       verification: null,
     };
-
     const { status, data } = await axios.post(
       'https://applydl.dotm.gov.np/license/apply/verification',
       payload,
@@ -474,6 +552,50 @@ async function getHeaders(userId, inertiaVersion) {
 }
 
 /**
+ * Checks the application's category and filled status
+ */
+async function checkApplicationStatus(userId) {
+  try {
+    const { inertiaVersion } = await getDynamicInfo();
+    const headers = await getHeaders(userId, inertiaVersion);
+    const { status, data } = await axios.get('https://applydl.dotm.gov.np/', {
+      headers,
+    });
+    if (status === 200) {
+      const { props } = data;
+      return {
+        statusCode: status,
+        isError: false,
+        message: 'This is tst',
+        message: `Type: ${
+          props.cards.apply
+            ? 'New license'
+            : props.cards.category
+            ? 'Add Category'
+            : 'Unknown type'
+        }, Status: ${
+          props.cards.apply && props.cards.apply.disabled === true
+            ? 'Registered'
+            : props.cards.category && props.cards.category.disabled === true
+            ? 'Registered'
+            : 'Not Registered'
+        }`,
+      };
+    } else {
+      return {
+        type: null,
+        message: 'Not a 200 status!',
+      };
+    }
+  } catch (error) {
+    return {
+      type: null,
+      message: error.message || 'Error while checking the status',
+    };
+  }
+}
+
+/**
  * Global helpers.
  * @returns
  */
@@ -529,11 +651,13 @@ async function extractSessionValues(cookiesValues) {
 }
 
 async function getCategory(userId) {
-  let getCategory = 'SELECT category from `user-session` WHERE userId = ?';
+  let getCategory =
+    'SELECT category, province, office from `user-session` WHERE userId = ?';
   return new Promise((resolve, reject) => {
     db.query(getCategory, [userId], (error, results) => {
       if (error) reject(error);
-      resolve({ category: results[0].category });
+      const { category, province, office } = results[0];
+      resolve({ category, province, office });
     });
   });
 }
@@ -611,7 +735,7 @@ async function makeFinalRequest(headers, payload) {
   } catch (error) {
     revertOtpExpiry(payload.otp);
     const { data, status } = error.response;
-    console.log('Apply  error', status);
+    // console.log('Apply  error', error);
     if ([401, 409].includes(status)) {
       return {
         status: status,
@@ -621,6 +745,75 @@ async function makeFinalRequest(headers, payload) {
     } else {
       console.log('Retrying applying process.....', status);
       makeFinalRequest(sHeaders, sPayload);
+    }
+  }
+}
+
+async function makeAddCatFinalRequest(headers, payload) {
+  let sHeaders = headers;
+  let sPayload = payload;
+  try {
+    const { status, data } = await axios.post(
+      'https://applydl.dotm.gov.np/license/category',
+      payload,
+      { headers },
+    );
+
+    const errorMessage =
+      data &&
+      data.props &&
+      data.props.errors &&
+      Object.keys(data.props.errors).length > 0;
+
+    if (status === 200 && !errorMessage) {
+      // Check for successfull alerts
+      const successAlerts =
+        data && data.props && data.props.alerts && data.props.alerts.length > 0;
+
+      if (successAlerts) {
+        // TODO increase successfull form counts
+        console.log('Success alerts aru pani huna sakxa case', data);
+      } else {
+        revertOtpExpiry(payload.otp);
+      }
+
+      return {
+        status,
+        isError: false,
+        message: successAlerts
+          ? JSON.stringify(data.props.alerts[0])
+          : 'No success alerts!',
+      };
+    } else if (status === 200 && errorMessage) {
+      console.log('sucess with errors!', data.props.errors);
+      await revertOtpExpiry(payload.otp);
+      return {
+        status,
+        isError: true,
+        message: JSON.stringify(data.props.errors || ''),
+      };
+    } else {
+      console.log('uncovered case in apply success', status, errorMessage);
+      await revertOtpExpiry(payload.otp);
+      return {
+        status,
+        isError: true,
+        message: 'Uncovered case',
+      };
+    }
+  } catch (error) {
+    revertOtpExpiry(payload.otp);
+    const { data, status } = error.response;
+    console.log('Apply  error', error);
+    if ([401, 409, 422].includes(status)) {
+      return {
+        status: status,
+        isError: true,
+        message: data.message || '401 or 409 case!',
+      };
+    } else {
+      console.log('Retrying applying process.....', status);
+      makeAddCatFinalRequest(sHeaders, sPayload);
     }
   }
 }

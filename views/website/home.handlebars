@@ -1,5 +1,22 @@
 <div class='container'>
-  <h3>OTP Process</h3>
+  <div class='d-flex justify-content-between'>
+
+    <h3>OTP Process</h3>
+    <div class='d-flex align-items-end gap-2'>
+      <button
+        class='btn btn-outline-primary verificationLogin'
+        onclick='bulkVerificationLogin()'
+      >
+        Bulk Login
+      </button>
+      <button
+        class='btn btn-outline-danger verificationLogin'
+        onclick='bulkSendOtp()'
+      >
+        Bulk Send OTP
+      </button>
+    </div>
+  </div>
   <hr />
   <div class='d-flex flex-column gap-3'>
 
@@ -10,6 +27,7 @@
           <th scope='col'>username</th>
           <th scope='col'>password</th>
           <th scope='col'>Actions</th>
+          <th scope='col'>Remarks</th>
         </tr>
       </thead>
       <tbody>
@@ -34,13 +52,11 @@
                   Check quota
                 </button>
                 <button
-                  class='btn btn-sm btn-warning'
+                  class='btn btn-sm btn-warning sendOtpButton'
                   onclick='sendOTP("{{userId}}")'
                 >
                   Send OTP
                 </button>
-              </div>
-              <div class='d-flex gap-2'>
                 <div id='otpInput'>
                   <input
                     type='number'
@@ -61,19 +77,17 @@
                 </button>
               </div>
             </td>
+            <td>
+              <div id='v-{{userId}}'></div>
+            </td>
           </tr>
         {{/each}}
       </tbody>
     </table>
 
-    <div class='messageBox sticky-top'>
-      <div class='d-flex flex-column'></div>
-      <div class='d-flex gap-2'>Status: <div id='status'>N/A</div></div>
-      <div class='d-flex gap-2 color-red'>Error:
-        <div id='error'>N/A</div></div>
+    <div class='messageBox'>
       <div class='d-flex gap-2'>Message:
         <div id='message'>N/A</div></div>
-
     </div>
   </div>
 </div>
@@ -82,14 +96,20 @@
   <div class='d-flex justify-content-between'>
     <h3>User Listing</h3>
     <div class='d-flex items-end gap-2'>
-      <button class='btn btn-outline-success' onclick='addUser()'>
+      <button class='btn btn-sm btn-outline-success' onclick='addUser()'>
         Add User
       </button>
-      <button class='btn btn-outline-primary' onclick='bulkLogin()'>
+      <button class='btn btn-sm btn-outline-primary' onclick='bulkLogin()'>
         Bulk Login
       </button>
-      <button class='btn btn-outline-info' onclick='bulkApply()'>
+      <button class='btn btn-sm btn-outline-info' onclick='bulkApply()'>
         Bulk Apply
+      </button>
+      <button
+        class='btn btn-sm btn-outline-secondary'
+        onclick='bulkAddCatApply()'
+      >
+        Bulk Category Apply
       </button>
     </div>
   </div>
@@ -116,17 +136,30 @@
             <td>{{category}}</td>
             <td>
               <button
-                class='btn btn-primary loginButton'
+                class='btn btn-sm btn-primary btn-sm loginButton'
                 onclick='applicantLogin("{{userId}}")'
               >
-                User Login
+                Login
               </button>
               <button
-                class='btn btn-warning applyButton'
+                class='btn btn-info btn-sm applicationCheck'
+                onclick='applicationStatusCheck("{{userId}}")'
+              >
+                Check
+              </button>
+              <button
+                class='btn btn-warning btn-sm applyButton'
                 onclick='applyForm("{{userId}}")'
               >
                 Apply
               </button>
+              <button
+                class='btn btn-warning btn-sm applyAddCatButton'
+                onclick='applyAddCategoryForm("{{userId}}")'
+              >
+                Category
+              </button>
+
             </td>
             <td>
               <div id={{userId}}></div>
@@ -188,7 +221,30 @@
               <option value='1'>Scooty</option>
               <option value='2' selected>Bike</option>
               <option value='3'>Car</option>
+              <option value='5'>E-Rickshaw</option>
+              <option value='7'>Tractor</option>
             </select>
+          </div>
+
+          <div class='d-flex flex-row gap-3'>
+            <div class='form-group w-100'>
+              <label for='province'>Select Province:</label>
+              <select class='form-control' id='province' required>
+                <option value='5' selected>Lumbini</option>
+                <option value='4'>Gandaki</option>
+                <option value='2'>Madhesh</option>
+              </select>
+            </div>
+
+            <div class='form-group w-100'>
+              <label for='office'>Office:</label>
+              <select class='form-control' id='office' required>
+                <option value='22'>Butwal</option>
+                <option value='9'>Birgunj</option>
+                <option value='17'>Pokhara</option>
+                <option value='16'>Kawasoti</option>
+              </select>
+            </div>
           </div>
 
         </form>
